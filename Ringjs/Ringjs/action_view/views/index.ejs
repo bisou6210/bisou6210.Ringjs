@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Ring.js</title>
+  <link rel="stylesheet" href="/stylesheets/style.css">
+  <link href='http://fonts.googleapis.com/css?family=Source+Sans+Pro:300' rel='stylesheet' type='text/css'>
+</head>
+<body class="cf">
+  <div id="pa">
+    <h1>Ringとは？</h1>
+    <p>
+    すべてのデバイスを操ることができる<br>
+    魔法の指輪「Ring」<br>
+    この指輪を操作することで<br>
+    ありとあらゆる場所に存在するカメラから<br>
+    写真を取ることができます。<br>
+    どこに設置されているか<br>
+    あなたはすべて探し出せますか？<br>
+    </p>
+  </div>
+  <div id="camera_araa">
+    <video id="camera" autoplay style="display: none;"></video>
+    <img id="camera_image1" src="">
+    <div id="canvas_area">
+      <canvas id="camera_canvas" height="100" width="100" style="display: inline;"></canvas>
+    </div>
+    <div id="snapshot">
+
+    </div>
+    <!-- <button type="button" id="ss">Screen Shot's!</button> -->
+  </div>
+</body>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+<script src="/socket.io/socket.io.js" ></script>
+<script type="text/javascript">
+$(function ()
+{
+
+  //----------------------------------------------------------------------
+  /*
+   * variable
+   */
+
+
+   var socket = io.connect(), // ソケット通信
+       video = document.getElementById('camera'), // 端末のCameraのstreamデータを流すVideoタグ
+       canvas = document.getElementById('camera_canvas'), // StreamデータをDataURL化するために一時的に貼付けるCanvasタグ
+       ctx = canvas.getContext('2d'), // 上に同じ
+       snapshot = document.getElementById('snapshot'),
+       image1 = document.getElementById('camera_image1'); // DataURLを貼付けるimgタグ
+
+
+//----------------------------------------------------------------------
+  /*
+   * camera set
+   */
+
+
+  $(video).css({
+    '-webkit-transform': 'rotateY(180deg)',
+    '-moz-transform': 'rotateY(180deg)',
+    '-ms-transform': 'rotateY(180deg)'
+  });
+
+
+//----------------------------------------------------------------------
+  /*
+   * camera resize
+   */
+
+
+  var window_size = resize_window(); // stageを生成
+
+  function resize_window(){
+
+    var windowW = window.innerWidth-230, // ウィンドウの横幅
+        windowH = windowW / 640 * 480; // カメラの縦幅
+
+    canvas.width = windowW; // canvasタグの横幅変更
+    canvas.height = windowH; // canvasタグの縦幅変更
+
+    video.width = windowW; // videoタグの横幅変更
+    video.height = windowH; // videoタグの縦幅変更
+
+    return { 'W' : windowW , 'H' : windowH }
+
+  }
+
+  var timer = false;
+  $(window).resize(function() {
+    if (timer !== false) {
+      clearTimeout( timer );
+    }
+    timer = setTimeout(function() {
+      window_size = resize_window()
+      console.log( window_size );
+    }, 400);
+  });
+
+
+  //----------------------------------------------------------------------
+  /*
+   * websoclet socket.io
+   */
+
+
+  // データ受信
+  socket.on('url_params', function (data)
+  {
+    console.log(data);
+    console.log(<%= url_data %>);
+
+    // データ格納
+    var ring_data = data;
+    var image_data = false;
+
+    // アクションを変化
+    if(ring_data == 001) // [✓]
+    {
+
+
+
+    }
+    else if(ring_data == 002) // [◯]
+    {
+
+      camera_to_image( image1 );
+
+    }
+    else if(ring_data == 0003) // [☆]
+    {
+
+      console.log('hoshi ☆ '+data);
+
+      // スクショ
+      image_data = camera_to_image( image1 );
+
+    }
+    else
+    {
+
+    }
+
+    // screen shot データをサーバーに送信
+    if(image_data && ring_data){
+      socket.emit( 'screen_shot_server', image_data );
+    }
+
+  });
+
+  socket.on('post_screen_shot', function (data)
+  {
+    console.log($(snapshot));
+    $(snapshot).append( "<img class='ss' src=" + data + " alt='画像'>" );
+  });
+
+
+  //----------------------------------------------------------------------
+  /*
+   * webRTC Stream APIs camera
+   */
+
+
+  var jug = true;
+
+  navigator.getMedia = (
+    navigator.getUserMedia ||
+    navigator.webkitGetUserMedia ||
+    navigator.mozGetUserMedia ||
+    navigator.msGetUserMedia
+  );
+
+  // window.URL =
+  //   window.URL ||
+  //   window.webkitURL ||
+  //   window.mozURL ||
+  //   window.msURL;
+
+
+  //Videoタグ
+  navigator.getMedia ({ video:true, audio:false }, function( stream ) {
+
+    // ctx.translate( window_size['W'], 0 );
+    // ctx.scale( -1, 1 );
+    // if ( typeof video.mozSrcObject !== "undefined" ) {
+    //   // moz
+    //   video.mozSrcObject = stream;
+    // } else {
+    //   // others
+    //   video.src = ( window.URL && window.URL.createObjectURL( stream ) ) || stream;
+    // }
+    video.src = window.URL.createObjectURL( stream );
+    loop();
+    // if( jug ){
+    //   ctx.translate( window_size['W'], 0 );
+    //   ctx.scale( -1, 1 );
+    //   jug = false;
+    // }
+
+  }, function( err ){console.log( err );});
+
+  // 画像に変換
+  function camera_to_image( img, modifyFunc ){
+
+    if( jug ){
+      ctx.translate( window_size['W'], 0 );
+      ctx.scale( -1, 1 );
+      jug = false;
+    }
+    var canvas_image = ctx.drawImage( video, 0, 0, window_size['W'], window_size['H'] );
+    canvas_image = ctx.getImageData( 0, 0, window_size['W'], window_size['H'] );
+    if( modifyFunc ){
+      modifyFunc(canvas_image.data);
+    }
+    ctx.putImageData( canvas_image, 0, 0 );
+
+    var dataURL = canvas.toDataURL( "image/octet-stream" );
+    // img.src = dataURL;
+    return dataURL;
+
+  }
+
+  function loop () {
+    // ctx.translate( window_size['W'], 0 );
+    // ctx.scale( -1, 1 );
+    requestAnimationFrame( loop );
+
+    if ( video.readyState === video.HAVE_ENOUGH_DATA ) {
+
+        ctx.drawImage( video, 0, 0, window_size['W'], window_size['H'] );
+    }
+  }
+
+  // 画像を新しくキャプチャー
+  $('#ss').click( function (){
+    camera_to_image( image1 );
+  } );
+
+  // camera_to_image( image1 );
+
+  // 画像を追加
+  $('img').click(function(){
+      var dataURL = $(this).attr( 'src' );
+      var img = $('<img>').attr( 'src', dataURL );
+  });
+
+
+  //----------------------------------------------------------------------
+
+
+});
+</script>
+</html>
+
+
+
+
