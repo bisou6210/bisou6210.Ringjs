@@ -1,12 +1,12 @@
  ***
 
  # Ring js
- @author Tanaka Mutsuto (bisou.web.6210@gmail.com)
+ *@author Tanaka Mutsuto (bisou.web.6210@gmail.com)
 
  ***
 
 
- * はじめに。
+ ## はじめに。
  ***
 
  学生時代の卒業展示会で作成したものです。
@@ -25,7 +25,7 @@
  RingZEROがもうすぐ発売されるとのことでその記念として上げておきます、どうぞ試してみてください。
 
 
- * 使い方。
+ ## 使い方。
  ***
 
  vagrantを立ち上げて (Vagrantが予め使える環境でおこなってください。)
